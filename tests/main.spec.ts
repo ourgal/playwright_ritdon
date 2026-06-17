@@ -7,24 +7,32 @@ async function saveContent(page: Page) {
   await appendFile('output.html', content, 'utf-8');
 }
 
+async function saveNextPage(page: Page) {
+  const nextBtm = page.getByRole('link', { name: '下一页' });
+  await expect(nextBtm).not.toHaveClass("disabled");
+
+  await nextBtm.click();
+  await saveContent(page)
+}
+
+async function waitForLogin(page: Page) {
+  await expect(page.getByRole('button', { name: '搜索' })).toBeVisible();
+}
+
+async function openBook(page: Page, index: number) {
+  await page.locator('div.book-cover').nth(index).locator('a').click();
+}
+
 test('main', async ({ page }) => {
   await page.goto('https://ritdon.com');
 
-  await expect(page.getByRole('button', { name: '搜索' })).toBeVisible();
+  await waitForLogin(page)
 
-  await page.locator('div.book-cover').nth(0).locator('a').click();
+  await openBook(page, 19)
 
-  saveContent(page)
+  await saveContent(page)
 
-  await page.getByRole('link', { name: '下一页' }).click();
-  saveContent(page)
-
-  await page.getByRole('link', { name: '下一页' }).click();
-  saveContent(page)
-
-  await page.getByRole('link', { name: '下一页' }).click();
-  saveContent(page)
-
-  await page.getByRole('link', { name: '下一页' }).click();
-  saveContent(page)
+  while (true) {
+    await saveNextPage(page)
+  }
 });
