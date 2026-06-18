@@ -2,13 +2,15 @@ import { appendFile, mkdir } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
-const BOOK_INDEX_TO_SCRAPE = 19;
+const BOOK_INDEX_TO_SCRAPE = 8;
 const currentDir = import.meta.dirname;
 
 async function saveContent(page: Page, title: string) {
   try {
     await page.waitForLoadState('networkidle');
-    const content = await page.locator('div.content-area').innerHTML();
+    const body = await page.locator('div.content-area').innerHTML();
+
+    const content = body.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
 
     let dir = path.join(currentDir, '../output', title);
     let file = path.join(dir, 'output.html');
