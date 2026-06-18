@@ -1,20 +1,29 @@
-import { appendFile, mkdir } from 'fs/promises';
+import { appendFile, mkdir, writeFile } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
 const BOOK_INDEX = 8;
-const PAGE = 3;
+const PAGE = 8;
 const currentDir = import.meta.dirname;
 
-async function saveContent(page: Page, title: string) {
+async function saveContent(page: Page, title: string, img_index: number) {
   try {
     await page.waitForLoadState('networkidle');
     const body = await page.locator('div.content-area').innerHTML();
 
-    const content = body.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
+    const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
 
-    let dir = path.join(currentDir, '../output', title);
-    let file = path.join(dir, 'output.html');
+    let tmpBody = body;
+    for (const match of matches) {
+      const res = await saveBase64(match, title, img_index);
+      img_index = res.img_index
+      tmpBody = tmpBody.replace(match, res.path)
+    }
+
+    const content = tmpBody.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
+
+    const dir = path.join(currentDir, '../output', title);
+    const file = path.join(dir, 'output.html');
 
     await mkdir(dir, { recursive: true });
     await appendFile(file, content, 'utf-8');
@@ -22,14 +31,16 @@ async function saveContent(page: Page, title: string) {
   } catch (error: any) {
     console.error(`Error saving content for "${title}": ${error.message}`);
   }
+
+  return img_index;
 }
 
-async function saveNextPage(page: Page, title: string) {
+async function saveNextPage(page: Page, title: string, img_index: number) {
   const nextBtm = page.getByRole('link', { name: '下一页' });
   await expect(nextBtm).not.toHaveClass("disabled");
 
   await nextBtm.click();
-  await saveContent(page, title)
+  return await saveContent(page, title, img_index)
 }
 
 async function waitForLogin(page: Page) {
@@ -61,6 +72,20 @@ async function switchPage(page: Page) {
   await expect(page.locator('div.book-cover').nth(19)).toBeVisible();
 }
 
+async function saveBase64(raw: string, title: string, img_index: number) {
+  var base64Data = raw.split(';base64,').pop()
+
+  const dir = path.join(currentDir, '../output', title, 'images');
+  await mkdir(dir, { recursive: true });
+  const img = path.join(dir, `${img_index}.jpg`);
+
+  writeFile(img, base64Data, 'base64', function (err: any) {
+    console.log(err);
+  });
+
+  return { path: path.join('images', `${img_index}.jpg`), img_index: img_index + 1 };
+}
+
 test('main', async ({ page }) => {
   await page.goto('https://ritdon.com');
 
@@ -75,12 +100,13 @@ test('main', async ({ page }) => {
     console.error("Failed to get book title. Aborting test.");
     throw error;
   }
+  let img_index = 0;
 
   await openBook(page, BOOK_INDEX);
 
-  await saveContent(page, bookTitle);
+  img_index = await saveContent(page, bookTitle, img_index);
 
   while (true) {
-    await saveNextPage(page, bookTitle)
+    img_index = await saveNextPage(page, bookTitle, img_index)
   }
 });
