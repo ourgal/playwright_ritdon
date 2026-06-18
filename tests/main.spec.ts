@@ -2,7 +2,8 @@ import { appendFile, mkdir } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
-const BOOK_INDEX_TO_SCRAPE = 8;
+const BOOK_INDEX = 8;
+const PAGE = 3;
 const currentDir = import.meta.dirname;
 
 async function saveContent(page: Page, title: string) {
@@ -15,7 +16,7 @@ async function saveContent(page: Page, title: string) {
     let dir = path.join(currentDir, '../output', title);
     let file = path.join(dir, 'output.html');
 
-    await mkdir(dir, { recursive: true })
+    await mkdir(dir, { recursive: true });
     await appendFile(file, content, 'utf-8');
     console.log(`Saved content to: ${dir}`);
   } catch (error: any) {
@@ -54,22 +55,30 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
   }
 }
 
+async function switchPage(page: Page) {
+  await page.locator('#page-input').fill(PAGE.toString());
+  await page.locator('#page-go').click();
+  await expect(page.locator('div.book-cover').nth(19)).toBeVisible();
+}
+
 test('main', async ({ page }) => {
   await page.goto('https://ritdon.com');
 
-  await waitForLogin(page)
+  await waitForLogin(page);
+
+  await switchPage(page);
 
   let bookTitle: string;
   try {
-    bookTitle = await getBookTitle(page, BOOK_INDEX_TO_SCRAPE);
+    bookTitle = await getBookTitle(page, BOOK_INDEX);
   } catch (error) {
     console.error("Failed to get book title. Aborting test.");
     throw error;
   }
 
-  await openBook(page, BOOK_INDEX_TO_SCRAPE)
+  await openBook(page, BOOK_INDEX);
 
-  await saveContent(page, bookTitle)
+  await saveContent(page, bookTitle);
 
   while (true) {
     await saveNextPage(page, bookTitle)
