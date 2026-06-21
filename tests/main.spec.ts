@@ -3,14 +3,15 @@ import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
-const BOOK_INDEX = 0;
+const BOOK_INDEX = 12;
 const PAGE = 8;
-const SEARCH_KEYWORD = '玩玩的';
+const SEARCH_KEYWORD = '农林';
 const currentDir = import.meta.dirname;
 
 async function saveContent(page: Page, title: string, img_index: number) {
   try {
     await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('button', { name: '目录' })).toBeVisible({ timeout: 60000 });
     const body = await page.locator('div.content-area').innerHTML();
 
     const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
