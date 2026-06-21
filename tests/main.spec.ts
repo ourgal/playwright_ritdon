@@ -2,8 +2,10 @@ import { appendFile, mkdir, writeFile } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
-const BOOK_INDEX = 8;
+const HOME_PAGE = "https://ritdon.com/epub_library.php"
+const BOOK_INDEX = 0;
 const PAGE = 8;
+const SEARCH_KEYWORD = '玩玩的';
 const currentDir = import.meta.dirname;
 
 async function saveContent(page: Page, title: string, img_index: number) {
@@ -66,10 +68,9 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
   }
 }
 
-async function switchPage(page: Page) {
-  await page.locator('#page-input').fill(PAGE.toString());
-  await page.locator('#page-go').click();
-  await expect(page.locator('div.book-cover').nth(19)).toBeVisible();
+async function switchPage(page: Page, page_index: number) {
+  await page.locator('#page-input').fill(page_index.toString());
+  await page.getByRole('button', { name: '跳转' }).click();
 }
 
 async function saveBase64(raw: string, title: string, img_index: number) {
@@ -86,12 +87,20 @@ async function saveBase64(raw: string, title: string, img_index: number) {
   return { path: path.join('images', `${img_index}.jpg`), img_index: img_index + 1 };
 }
 
+async function search(page: Page, keyword: string) {
+  await page.getByPlaceholder("搜索书籍...").fill(keyword)
+  await page.getByRole('button', { name: '搜索' }).click();
+}
+
+
 test('main', async ({ page }) => {
-  await page.goto('https://ritdon.com');
+  await page.goto(HOME_PAGE);
 
   await waitForLogin(page);
 
-  await switchPage(page);
+  await search(page, SEARCH_KEYWORD)
+
+  // await switchPage(page, PAGE);
 
   let bookTitle: string;
   try {
