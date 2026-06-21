@@ -3,7 +3,7 @@ import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
-const BOOK_INDEX = 12;
+const BOOK_INDEX = 11;
 const PAGE = 8;
 const SEARCH_KEYWORD = '农林';
 const currentDir = import.meta.dirname;
@@ -59,7 +59,7 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
     const title = await page.locator('div.book-title').nth(index).getAttribute('title');
     if (title) {
       console.log(`Found title for book at index ${index}: "${title}"`);
-      return title;
+      return title.replace(/\s/g, '_');
     } else {
       throw new Error(`'title' attribute is null or undefined for book at index ${index}.`);
     }
