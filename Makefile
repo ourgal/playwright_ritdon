@@ -7,6 +7,9 @@ all:
 title:
 	@pnpm exec patchright test --headed tests/title.spec.ts
 
+title_zht:
+	@pnpm exec patchright test --headed tests/title_zht.spec.ts
+
 auth:
 	@pnpm exec patchright test --headed tests/auth.setup.ts
 
