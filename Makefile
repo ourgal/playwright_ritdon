@@ -4,6 +4,9 @@ FILES := $(patsubst %, %temp.md, $(DIRS))
 all:
 	@pnpm exec patchright test --headed tests/main.spec.ts
 
+title:
+	@pnpm exec patchright test --headed tests/title.spec.ts
+
 auth:
 	@pnpm exec patchright test --headed tests/auth.setup.ts
 
