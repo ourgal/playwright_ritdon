@@ -32,7 +32,7 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
 async function getBookTitles(page: Page) {
   for (let i = 0; i < 20; i++) {
     const title = await getBookTitle(page, i)
-    const file = path.join(currentDir, '../output', 'titles.txt');
+    const file = path.join(currentDir, '../titles', 'titles.txt');
     await appendFile(file, title + '\n', 'utf8');
   }
 }
