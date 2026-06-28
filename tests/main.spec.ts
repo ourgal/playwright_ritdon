@@ -1,12 +1,15 @@
 import { appendFile, mkdir, writeFile } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
+import dotenv from 'dotenv';
 
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
-const BOOK_INDEX = 11;
-const PAGE = 8;
-const SEARCH_KEYWORD = '农林';
 const currentDir = import.meta.dirname;
+dotenv.config();
+
+const BOOK_INDEX = parseInt(process.env.BOOK_INDEX, 10);
+const PAGE = parseInt(process.env.PAGE, 10);
+const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
 
 async function saveContent(page: Page, title: string, img_index: number) {
   try {
@@ -47,7 +50,7 @@ async function saveNextPage(page: Page, title: string, img_index: number) {
 }
 
 async function waitForLogin(page: Page) {
-  await expect(page.getByRole('button', { name: '搜索' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
 }
 
 async function openBook(page: Page, index: number) {

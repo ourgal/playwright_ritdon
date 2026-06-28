@@ -4,6 +4,7 @@ import path from 'path';
 
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
 const currentDir = import.meta.dirname;
+const title_file = path.join(currentDir, '../titles', 'titles_zht.txt');
 
 async function waitForLogin(page: Page) {
   await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
@@ -29,11 +30,10 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
   }
 }
 
-async function getBookTitles(page: Page) {
+async function getBookTitles(page: Page, path: string) {
   for (let i = 0; i < 20; i++) {
     const title = await getBookTitle(page, i)
-    const file = path.join(currentDir, '../titles', 'titles_zht.txt');
-    await appendFile(file, title + '\n', 'utf8');
+    await appendFile(path, title + '\n', 'utf8');
   }
 }
 
@@ -55,10 +55,7 @@ async function getMaxPageNum(page: Page): Promise<number> {
   }
 }
 
-
-test('main', async ({ page }) => {
-  await page.goto(HOME_PAGE);
-
+async function blcokImages(page: Page) {
   // Intercept and block all image requests
   await page.route('**/*', route => {
     if (route.request().resourceType() === 'image') {
@@ -66,12 +63,19 @@ test('main', async ({ page }) => {
     }
     return route.continue();
   });
+}
+
+
+test('main', async ({ page }) => {
+  await page.goto(HOME_PAGE);
+
+  await blcokImages(page);
 
   await waitForLogin(page);
 
   await switchZht(page);
 
-  await getBookTitles(page);
+  await getBookTitles(page, title_file);
 
   const max_page = await getMaxPageNum(page);
 
