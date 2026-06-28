@@ -37,6 +37,19 @@ async function getBookTitles(page: Page) {
   }
 }
 
+async function getMaxPageNum(page: Page): Promise<number> {
+  const text = await page.locator('div.status-bar').innerText();
+  console.log(text)
+  const regex = /\d+\/(\d+)/;
+  const match = text.match(regex);
+  if (match) {
+    const num = match[1];
+    return parseInt(num, 10);
+  } else {
+    throw new Error('Max page number not found');
+  }
+}
+
 test('main', async ({ page }) => {
   await page.goto(HOME_PAGE);
 
@@ -52,7 +65,9 @@ test('main', async ({ page }) => {
 
   await getBookTitles(page);
 
-  for (let i = 0; i < 274; i++) {
+  const max_page = await getMaxPageNum(page);
+
+  for (let i = 0; i < (max_page - 2); i++) {
     await switchPage(page, i + 2)
     await getBookTitles(page)
   }
