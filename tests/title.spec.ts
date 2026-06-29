@@ -74,7 +74,7 @@ test('main', async ({ page }) => {
 
   for (let i = 0; i < (max_page - 2); i++) {
     await switchPage(page, i + 2)
-    await getBookTitles(page)
+    await getBookTitles(page, title_file)
   }
 
 });
