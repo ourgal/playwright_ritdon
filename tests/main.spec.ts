@@ -14,7 +14,7 @@ const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
 async function saveContent(page: Page, title: string, img_index: number) {
   try {
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('button', { name: '目录' })).toBeVisible({ timeout: 60000 });
+    await expect(page.locator('button#btnPanel')).toBeVisible({ timeout: 60000 });
     const body = await page.locator('div.content-area').innerHTML();
 
     const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
@@ -42,15 +42,12 @@ async function saveContent(page: Page, title: string, img_index: number) {
 }
 
 async function saveNextPage(page: Page, title: string, img_index: number) {
-  const nextBtm = page.getByRole('link', { name: '下一页' });
-  await expect(nextBtm).not.toHaveClass("disabled");
-
-  await nextBtm.click();
+  await page.locator('a#btnNext').click();
   return await saveContent(page, title, img_index)
 }
 
 async function waitForLogin(page: Page) {
-  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 60000 });
 }
 
 async function openBook(page: Page, index: number) {

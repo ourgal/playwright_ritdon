@@ -7,7 +7,7 @@ const currentDir = import.meta.dirname;
 const title_file = path.join(currentDir, '../titles', 'titles_zht.txt');
 
 async function waitForLogin(page: Page) {
-  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 60000 });
 }
 
 async function switchPage(page: Page, page_index: number) {
