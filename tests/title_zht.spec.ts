@@ -37,8 +37,8 @@ async function getBookTitles(page: Page, path: string) {
   }
 }
 
-async function switchZht(page: Page) {
-  await page.locator('select#cat-select').selectOption('traditional');
+async function switchCategory(page: Page, cat: string = 'traditional') {
+  await page.locator('select#cat-select').selectOption(cat);
   await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
 }
 
@@ -67,13 +67,13 @@ async function blcokImages(page: Page) {
 
 
 test('main', async ({ page }) => {
-  await page.goto(HOME_PAGE);
-
   await blcokImages(page);
+
+  await page.goto(HOME_PAGE);
 
   await waitForLogin(page);
 
-  await switchZht(page);
+  await switchCategory(page);
 
   await getBookTitles(page, title_file);
 
