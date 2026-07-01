@@ -5,6 +5,8 @@ title := titles/titles
 all:
 	@pnpm exec patchright test --headed tests/main.spec.ts
 
+titles: title title_zht title_other
+
 title:
 	@-rm $(title).txt
 	@pnpm exec patchright test --headed tests/title.spec.ts
@@ -14,6 +16,11 @@ title_zht:
 	@-rm $(title)_zht.txt
 	@pnpm exec patchright test --headed tests/title_zht.spec.ts
 	@pwsh -c "cat $(title)_zht.txt | sort > $(title)_zht_sorted.txt"
+
+title_other:
+	@-rm $(title)_other.txt
+	@pnpm exec patchright test --headed tests/title_other.spec.ts
+	@pwsh -c "cat $(title)_other.txt | sort > $(title)_other_sorted.txt"
 
 auth:
 	@pnpm exec patchright test --headed tests/auth.setup.ts

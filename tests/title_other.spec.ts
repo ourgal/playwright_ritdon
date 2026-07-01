@@ -4,8 +4,7 @@ import path from 'path';
 
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
 const currentDir = import.meta.dirname;
-const title_file = path.join(currentDir, '../titles', 'titles_zht.txt');
-
+const title_file = path.join(currentDir, '../titles', 'titles_other.txt');
 async function waitForLogin(page: Page) {
   await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 60000 });
 }
@@ -73,7 +72,7 @@ test('main', async ({ page }) => {
 
   await waitForLogin(page);
 
-  await switchCategory(page);
+  await switchCategory(page, 'other');
 
   await getBookTitles(page, title_file);
 
@@ -85,3 +84,4 @@ test('main', async ({ page }) => {
   }
 
 });
+
