@@ -5,8 +5,8 @@ import path from 'path';
 const HOME_PAGE = "https://ritdon.com/epub_library.php"
 const currentDir = import.meta.dirname;
 const title_file = path.join(currentDir, '../titles', 'titles_other.txt');
-async function waitForLogin(page: Page) {
-  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 60000 });
+async function loading(page: Page) {
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 120000 });
 }
 
 async function switchPage(page: Page, page_index: number) {
@@ -30,7 +30,8 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
 }
 
 async function getBookTitles(page: Page, path: string) {
-  for (let i = 0; i < 20; i++) {
+  const count = await page.locator('div.book-title').count();
+  for (let i = 0; i < count; i++) {
     const title = await getBookTitle(page, i)
     await appendFile(path, title + '\n', 'utf8');
   }
@@ -70,7 +71,7 @@ test('main', async ({ page }) => {
 
   await page.goto(HOME_PAGE);
 
-  await waitForLogin(page);
+  await loading(page);
 
   await switchCategory(page, 'other');
 
@@ -78,8 +79,9 @@ test('main', async ({ page }) => {
 
   const max_page = await getMaxPageNum(page);
 
-  for (let i = 0; i < (max_page - 2); i++) {
-    await switchPage(page, i + 2)
+  for (let i = 1; i < max_page; i++) {
+    await switchPage(page, i + 1)
+    await loading(page);
     await getBookTitles(page, title_file)
   }
 
