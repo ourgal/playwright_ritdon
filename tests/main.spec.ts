@@ -46,8 +46,8 @@ async function saveNextPage(page: Page, title: string, img_index: number) {
   return await saveContent(page, title, img_index)
 }
 
-async function waitForLogin(page: Page) {
-  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 60000 });
+async function loading(page: Page) {
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 120000 });
 }
 
 async function openBook(page: Page, index: number) {
@@ -97,7 +97,7 @@ async function search(page: Page, keyword: string) {
 test('main', async ({ page }) => {
   await page.goto(HOME_PAGE);
 
-  await waitForLogin(page);
+  await loading(page);
 
   await search(page, SEARCH_KEYWORD)
 
