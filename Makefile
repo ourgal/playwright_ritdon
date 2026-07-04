@@ -5,7 +5,7 @@ title := titles/titles
 all:
 	@pnpm exec patchright test --headed tests/main.spec.ts
 
-titles: title title_zht title_other
+titles: pull title title_zht title_other
 
 title:
 	@-rm $(title).txt
@@ -22,9 +22,11 @@ title_other:
 	@pnpm exec patchright test --headed tests/title_other.spec.ts
 	@pwsh -c "cat $(title)_other.txt | sort > $(title)_other_sorted.txt"
 
+PHONY: auth
 auth:
 	@pnpm exec patchright test --headed tests/auth.setup.ts
 
+PHONY: install
 install:
 	@pnpm exec patchright install chromium
 
@@ -32,3 +34,7 @@ md: ${FILES}
 
 ${FILES}:
 	pandoc -f html $(dir $@)output.html -t markdown -o $@ --wrap=none
+
+PHONY: pull
+pull:
+	@git pull origin
