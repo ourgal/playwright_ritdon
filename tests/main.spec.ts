@@ -93,6 +93,19 @@ async function search(page: Page, keyword: string) {
   await page.getByRole('button', { name: '搜索' }).click();
 }
 
+async function getPageNum(page: Page) {
+  const raw = await page.locator('span#bookProgress').innerText();
+  console.log(raw)
+  const regex = /\d+\/(\d+)/;
+  const match = raw.match(regex);
+  if (match) {
+    const num = match[1];
+    return parseInt(num, 10);
+  } else {
+    throw new Error('Page number not found');
+  }
+}
+
 
 test('main', async ({ page }) => {
   await page.goto(HOME_PAGE);
@@ -116,7 +129,9 @@ test('main', async ({ page }) => {
 
   img_index = await saveContent(page, bookTitle, img_index);
 
-  while (true) {
+  const pageNum = await getPageNum(page);
+
+  for(let i = 1; i < pageNum; i++) {
     img_index = await saveNextPage(page, bookTitle, img_index)
   }
 });
