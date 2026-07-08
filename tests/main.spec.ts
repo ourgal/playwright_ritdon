@@ -12,40 +12,62 @@ const PAGE = parseInt(process.env.PAGE, 10);
 const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
 
 async function saveContent(page: Page, title: string, img_index: number) {
-  try {
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('button#btnPanel')).toBeVisible({ timeout: 60000 });
-    const body = await page.locator('div.content-area').innerHTML();
+  await verify(page);
 
-    const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('button#btnPanel')).toBeVisible({ timeout: 60000 });
+  const body = await page.locator('div.content-area').innerHTML();
 
-    let tmpBody = body;
-    for (const match of matches) {
-      const res = await saveBase64(match, title, img_index);
-      img_index = res.img_index
-      tmpBody = tmpBody.replace(match, res.path)
-    }
+  const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
 
-    const content = tmpBody.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
-
-    const dir = path.join(currentDir, '../output', title);
-    const file = path.join(dir, 'output.html');
-
-    await mkdir(dir, { recursive: true });
-    await appendFile(file, content, 'utf-8');
-    console.log(`Saved content to: ${dir}`);
-  } catch (error: any) {
-    console.error(`Error saving content for "${title}": ${error.message}`);
+  let tmpBody = body;
+  for (const match of matches) {
+    const res = await saveBase64(match, title, img_index);
+    img_index = res.img_index
+    tmpBody = tmpBody.replace(match, res.path)
   }
+
+  const content = tmpBody.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
+
+  const dir = path.join(currentDir, '../output', title);
+  const file = path.join(dir, 'output.html');
+
+  await mkdir(dir, { recursive: true });
+  await appendFile(file, content, 'utf-8');
+
+  const progress = await getSpineIndex(page);
+  console.log(`${title} ${progress}`);
 
   return img_index;
 }
 
-async function saveNextPage(page: Page, title: string, img_index: number) {
-  const btnNext = page.locator('a#btnNext');
-  const count = await btnNext.count();
+async function verify(page: Page) {
+  await page.waitForLoadState('networkidle');
+
+  const btn = page.getByRole('button', { name: '验证' });
+  const count = await btn.count();
   if (count > 0) {
-    await btnNext.click();
+    await page.locator("input[name='antispider_captcha']").fill("0");
+    await btn.click();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+async function nextPage(page: Page) {
+  const btn = page.locator('a#btnNext');
+  const count = await btn.count();
+  if (count > 0) {
+    await btn.click();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+async function saveNextPage(page: Page, title: string, img_index: number) {
+  if (await nextPage(page)) {
     return await saveContent(page, title, img_index);
   } else {
     return -1;
@@ -112,6 +134,31 @@ async function getPageNum(page: Page) {
   }
 }
 
+async function getSpineIndex(page: Page) {
+  const content = await page.content();
+
+  const regex_current = /CURRENT_SPINE = (\d+)/;
+  const match_current = content.match(regex_current);
+
+  let current = '';
+  if (match_current) {
+    current = parseInt(match_current[1], 10) + 1;
+  } else {
+    throw new Error('Page number not found');
+  }
+
+  let total = '';
+  const regex_total = /SPINE_TOTAL = (\d+)/;
+  const match_total = content.match(regex_total);
+  if (match_total) {
+    total = parseInt(match_total[1]);
+  } else {
+    throw new Error('Page number not found');
+  }
+
+  return `${current}/${total}`;
+}
+
 
 test('main', async ({ page }) => {
   await page.goto(HOME_PAGE);
@@ -135,7 +182,7 @@ test('main', async ({ page }) => {
 
   img_index = await saveContent(page, bookTitle, img_index);
 
-  while (img_index < 0) {
+  while (img_index >= 0) {
     img_index = await saveNextPage(page, bookTitle, img_index)
   }
 });
