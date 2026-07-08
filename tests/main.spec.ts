@@ -42,8 +42,14 @@ async function saveContent(page: Page, title: string, img_index: number) {
 }
 
 async function saveNextPage(page: Page, title: string, img_index: number) {
-  await page.locator('a#btnNext').click();
-  return await saveContent(page, title, img_index)
+  const btnNext = page.locator('a#btnNext');
+  const count = await btnNext.count();
+  if (count > 0) {
+    await btnNext.click();
+    return await saveContent(page, title, img_index);
+  } else {
+    return -1;
+  }
 }
 
 async function loading(page: Page) {
@@ -129,9 +135,7 @@ test('main', async ({ page }) => {
 
   img_index = await saveContent(page, bookTitle, img_index);
 
-  const pageNum = await getPageNum(page);
-
-  for(let i = 1; i < pageNum; i++) {
+  while (img_index < 0) {
     img_index = await saveNextPage(page, bookTitle, img_index)
   }
 });
