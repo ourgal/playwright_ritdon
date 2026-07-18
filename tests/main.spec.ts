@@ -1,4 +1,4 @@
-import { appendFile, mkdir, writeFile } from 'fs/promises';
+import { appendFile, mkdir, writeFile, access, constants, rename } from 'fs/promises';
 import { expect, Page, test } from 'patchright/test';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -10,6 +10,7 @@ dotenv.config();
 const BOOK_INDEX = parseInt(process.env.BOOK_INDEX, 10);
 const PAGE = parseInt(process.env.PAGE, 10);
 const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
+const DOWNLOAD_FULL_PAGE = parseInt(process.env.DOWNLOAD_FULL_PAGE, 10);
 
 async function saveContent(page: Page, title: string, img_index: number) {
   await verify(page);
@@ -29,7 +30,7 @@ async function saveContent(page: Page, title: string, img_index: number) {
 
   const content = tmpBody.replace(/<meta.*?>/g, '').replace(/<style.*?>[\s\S]*?<\/style>/g, '').replace(/<title.*?>.*?<\/title>/g, '').replace(/<div.*?>/g, '').replace(/<\/div>/g, '').replace(/^\s*[\r\n]$/gm, '');
 
-  const dir = path.join(currentDir, '../output', title);
+  const dir = path.join(...[currentDir, '../output', title]);
   const file = path.join(dir, 'output.html');
 
   await mkdir(dir, { recursive: true });
@@ -98,6 +99,9 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
 }
 
 async function switchPage(page: Page, page_index: number) {
+  if (page_index <= 0) {
+    return
+  }
   await page.locator('#page-input').fill(page_index.toString());
   await page.getByRole('button', { name: '跳转' }).click();
 }
@@ -117,6 +121,9 @@ async function saveBase64(raw: string, title: string, img_index: number) {
 }
 
 async function search(page: Page, keyword: string) {
+  if (keyword == "") {
+    return
+  }
   await page.getByPlaceholder("搜索书籍...").fill(keyword)
   await page.getByRole('button', { name: '搜索' }).click();
 }
@@ -159,30 +166,69 @@ async function getSpineIndex(page: Page) {
   return `${current}/${total}`;
 }
 
-
-test('main', async ({ page }) => {
-  await page.goto(HOME_PAGE);
-
-  await loading(page);
-
-  await search(page, SEARCH_KEYWORD)
-
-  // await switchPage(page, PAGE);
-
+async function downloadBook(page: Page, index: number) {
+  if (index < 0 || index > 19) {
+    index = 0;
+  }
   let bookTitle: string;
   try {
-    bookTitle = await getBookTitle(page, BOOK_INDEX);
+    bookTitle = await getBookTitle(page, index);
   } catch (error) {
     console.error("Failed to get book title. Aborting test.");
     throw error;
   }
+
+  await openBook(page, index);
+
+  const file = path.join(...[currentDir, '../output', bookTitle, 'output.html']);
+  const bakFile = path.join(...[currentDir, '../output', bookTitle, 'output.html.bak']);
+
+  if (await checkFile(file)) {
+      await rename(file, bakFile);
+  }
+
   let img_index = 0;
-
-  await openBook(page, BOOK_INDEX);
-
   img_index = await saveContent(page, bookTitle, img_index);
 
   while (img_index >= 0) {
     img_index = await saveNextPage(page, bookTitle, img_index)
+  }
+}
+
+async function getBookNum(page: Page) {
+  await page.waitForLoadState('networkidle');
+  const num = await page.locator('div.book-cover').count();
+  console.log(`The number of books is ${num}`);
+  return num;
+}
+
+async function checkFile(path) {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+test('main', async ({ page }) => {
+  await page.goto(HOME_PAGE);
+  await loading(page);
+  await search(page, SEARCH_KEYWORD)
+  await switchPage(page, PAGE);
+
+  if (DOWNLOAD_FULL_PAGE == 1) {
+    const bookNum = await getBookNum(page);
+    for (let i = 0; i < bookNum; i++){
+      await downloadBook(page, i);
+
+      await page.goto(HOME_PAGE);
+      await loading(page);
+      await search(page, SEARCH_KEYWORD)
+      await switchPage(page, PAGE);
+    }
+  } else {
+    await downloadBook(page, BOOK_INDEX);
   }
 });
