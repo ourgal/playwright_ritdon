@@ -10,6 +10,9 @@ async function loading(page: Page) {
 }
 
 async function switchPage(page: Page, page_index: number) {
+  if (page_index <= 0) {
+    return
+  }
   await page.locator('#page-input').fill(page_index.toString());
   await page.getByRole('button', { name: '跳转' }).click();
 }
