@@ -37,7 +37,7 @@ async function saveContent(page: Page, title: string, img_index: number) {
   await appendFile(file, content, 'utf-8');
 
   const progress = await getSpineIndex(page);
-  console.log(`${title} ${progress}`);
+  console.log(`${title} ${progress} ${content.length}`);
 
   return img_index;
 }
