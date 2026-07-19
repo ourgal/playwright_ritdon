@@ -1,5 +1,3 @@
-
-# Playwright
 node_modules/
 /test-results/
 /playwright-report/
@@ -7,5 +5,5 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 /.env
-/output.html
 /output/
+*.7z
