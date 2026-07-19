@@ -7,10 +7,10 @@ const HOME_PAGE = "https://ritdon.com/epub_library.php"
 const currentDir = import.meta.dirname;
 dotenv.config();
 
-const BOOK_INDEX = parseInt(process.env.BOOK_INDEX, 10);
-const PAGE = parseInt(process.env.PAGE, 10);
+const BOOK_INDEX = parseInt(process.env.BOOK_INDEX, 10) || 0;
+const PAGE = parseInt(process.env.PAGE, 10) || 0;
 const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
-const DOWNLOAD_FULL_PAGE = parseInt(process.env.DOWNLOAD_FULL_PAGE, 10);
+const DOWNLOAD_FULL_PAGE = parseInt(process.env.DOWNLOAD_FULL_PAGE, 10) || 0;
 
 async function saveContent(page: Page, title: string, img_index: number) {
   await verify(page);
