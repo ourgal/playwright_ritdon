@@ -101,13 +101,13 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
   try {
     const title = await page.locator('div.book-title').nth(index).getAttribute('title');
     if (title) {
-      console.log(`Found title for book at ${index + 1}: "${title}"`);
+      console.log(`Found title for book at index ${index}: "${title}"`);
       return title.replace(/[\s\*\?]/g, '_');
     } else {
       throw new Error(`'title' attribute is null or undefined for book at index ${index}.`);
     }
   } catch (error: any) {
-    console.error(`Error getting title for book at ${index + 1}: ${error.message}`);
+    console.error(`Error getting title for book at index ${index}: ${error.message}`);
     throw error;
   }
 }
@@ -183,10 +183,8 @@ async function getSpineIndex(page: Page) {
 }
 
 async function downloadBook(page: Page, index: number) {
-  if (index < 1 || index > 20) {
+  if (index < 0 || index > 19) {
     index = 0;
-  } else {
-    index -= 1;
   }
   let bookTitle: string;
   try {
