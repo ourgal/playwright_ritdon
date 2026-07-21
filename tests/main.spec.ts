@@ -101,13 +101,13 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
   try {
     const title = await page.locator('div.book-title').nth(index).getAttribute('title');
     if (title) {
-      console.log(`Found title for book at index ${index}: "${title}"`);
+      console.log(`Found title for book at ${index + 1}: "${title}"`);
       return title.replace(/[\s\*\?]/g, '_');
     } else {
       throw new Error(`'title' attribute is null or undefined for book at index ${index}.`);
     }
   } catch (error: any) {
-    console.error(`Error getting title for book at index ${index}: ${error.message}`);
+    console.error(`Error getting title for book at ${index + 1}: ${error.message}`);
     throw error;
   }
 }
@@ -118,6 +118,7 @@ async function switchPage(page: Page, page_index: number) {
   }
   await page.locator('#page-input').fill(page_index.toString());
   await page.getByRole('button', { name: '跳转' }).click();
+  await page.waitForResponse('**/epub_library.php*');
 }
 
 async function saveBase64(raw: string, title: string, img_index: number) {
@@ -182,8 +183,10 @@ async function getSpineIndex(page: Page) {
 }
 
 async function downloadBook(page: Page, index: number) {
-  if (index < 0 || index > 19) {
+  if (index < 1 || index > 20) {
     index = 0;
+  } else {
+    index -= 1;
   }
   let bookTitle: string;
   try {
