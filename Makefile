@@ -5,6 +5,7 @@ args := --headed
 
 all:
 	@pnpm exec patchright test $(args) tests/main.spec.ts
+	@-noti
 
 titles: pull title title_zht title_other
 
