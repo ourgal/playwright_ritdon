@@ -119,6 +119,7 @@ async function switchPage(page: Page, page_index: number) {
   await page.locator('#page-input').fill(page_index.toString());
   await page.getByRole('button', { name: '跳转' }).click();
   await page.waitForResponse('**/epub_library.php*');
+  await expect(page.locator('div.book-cover').nth(0)).toBeVisible({ timeout: 60000 });
 }
 
 async function saveBase64(raw: string, title: string, img_index: number) {
