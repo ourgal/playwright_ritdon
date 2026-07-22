@@ -44,19 +44,20 @@ async function switchPage(page: Page, page_index: number) {
   await page.locator('#page-input').fill(page_index.toString());
   await page.getByRole('button', { name: '跳转' }).click();
   await page.waitForResponse('**/epub_library.php*');
+  await expect(page.locator('div.book-cover').nth(0)).toBeVisible({ timeout: 60000 });
 }
 
 async function getBookTitle(page: Page, index: number): Promise<string> {
   try {
     const title = await page.locator('div.book-title').nth(index).getAttribute('title');
     if (title) {
-      console.log(`Found title for book at ${index + 1}: "${title}"`);
+      console.log(`Found title for book at index ${index}: "${title}"`);
       return title.replace(/[\s\*\?]/g, '_');
     } else {
       throw new Error(`'title' attribute is null or undefined for book at index ${index}.`);
     }
   } catch (error: any) {
-    console.error(`Error getting title for book at ${index + 1}: ${error.message}`);
+    console.error(`Error getting title for book at index ${index}: ${error.message}`);
     throw error;
   }
 }
