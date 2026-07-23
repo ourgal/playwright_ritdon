@@ -1,10 +1,13 @@
 DIRS := $(wildcard output/*/)
 FILES := $(patsubst %, %temp.md, $(DIRS))
 title := titles/titles
-args := --headed
+args :=
+search_keyword := $(shell cat .env | grep "SEARCH_KEYWORD" | cut -d "=" -f 2)
 
 all:
 	@pnpm exec patchright test $(args) tests/main.spec.ts
+	@mv output $(search_keyword)
+	@-gotify-cli p $(search_keyword)
 
 titles: pull title title_zht title_other
 
