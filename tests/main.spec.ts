@@ -102,7 +102,7 @@ async function getBookTitle(page: Page, index: number): Promise<string> {
     const title = await page.locator('div.book-title').nth(index).getAttribute('title');
     if (title) {
       console.log(`Found title for book at index ${index}: "${title}"`);
-      return title.replace(/[\s\*\?]/g, '_');
+      return title.replace(/[\s\*\?:]/g, '_');
     } else {
       throw new Error(`'title' attribute is null or undefined for book at index ${index}.`);
     }
