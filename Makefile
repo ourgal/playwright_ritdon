@@ -7,6 +7,7 @@ search_keyword := $(shell cat .env | grep "SEARCH_KEYWORD" | cut -d "=" -f 2)
 all:
 	@pnpm exec patchright test $(args) tests/main.spec.ts
 	@mv output $(search_keyword)
+	@noti -m "$(search_keyword)"
 
 titles: pull title title_zht title_other
 
