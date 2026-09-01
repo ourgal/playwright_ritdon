@@ -73,8 +73,14 @@ async function nextPage(page: Page) {
   const btn = page.locator('a#btnNext');
   const count = await btn.count();
   if (count > 0) {
-    await btn.click();
-    return true;
+    const href = await btn.getAttribute('href');
+    if (href != "#") {
+      await btn.click();
+      return true;
+    }
+    else {
+      return false;
+    }
   } else {
     return false;
   }
