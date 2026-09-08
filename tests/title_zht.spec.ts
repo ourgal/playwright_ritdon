@@ -11,7 +11,7 @@ async function loading(page: Page) {
   await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 1200000 });
 }
 
-async function verify(page: Page, zero: bool = true) {
+async function verify(page: Page, zero: boolean = true) {
   await page.waitForLoadState('networkidle');
   const btn = page.getByRole('button', { name: '验证' });
   const count = await btn.count();

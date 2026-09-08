@@ -7,10 +7,10 @@ const HOME_PAGE = "https://ritdon.com/epub_library.php"
 const currentDir = import.meta.dirname;
 dotenv.config();
 
-const BOOK_INDEX = parseInt(process.env.BOOK_INDEX, 10) || 0;
-const PAGE = parseInt(process.env.PAGE, 10) || 0;
-const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD;
-const DOWNLOAD_FULL_PAGE = parseInt(process.env.DOWNLOAD_FULL_PAGE, 10) || 0;
+const BOOK_INDEX = parseInt(process.env.BOOK_INDEX ?? '0', 10) || 0;
+const PAGE = parseInt(process.env.PAGE ?? '0', 10) || 0;
+const SEARCH_KEYWORD = process.env.SEARCH_KEYWORD ?? '';
+const DOWNLOAD_FULL_PAGE = parseInt(process.env.DOWNLOAD_FULL_PAGE ?? '0', 10) || 0;
 
 async function saveContent(page: Page, title: string, img_index: number) {
   await verify(page);
@@ -42,7 +42,7 @@ async function saveContent(page: Page, title: string, img_index: number) {
   return img_index;
 }
 
-async function verify(page: Page, zero: bool = true) {
+async function verify(page: Page, zero: boolean = true) {
   await page.waitForLoadState('networkidle');
   const btn = page.getByRole('button', { name: '验证' });
   const count = await btn.count();
@@ -129,13 +129,13 @@ async function switchPage(page: Page, page_index: number) {
 }
 
 async function saveBase64(raw: string, title: string, img_index: number) {
-  var base64Data = raw.split(';base64,').pop()
+  var base64Data = raw.split(';base64,').pop() ?? ''
 
   const dir = path.join(currentDir, '../output', title, 'images');
   await mkdir(dir, { recursive: true });
   const img = path.join(dir, `${img_index}.jpg`);
 
-  writeFile(img, base64Data, 'base64', function (err: any) {
+  writeFile(img, base64Data, 'base64').catch((err: any) => {
     console.log(err);
   });
 
@@ -170,18 +170,18 @@ async function getSpineIndex(page: Page) {
   const regex_current = /CURRENT_SPINE = (\d+)/;
   const match_current = content.match(regex_current);
 
-  let current = '';
+  let current = 0;
   if (match_current) {
     current = parseInt(match_current[1], 10) + 1;
   } else {
     throw new Error('Page number not found');
   }
 
-  let total = '';
+  let total = 0;
   const regex_total = /SPINE_TOTAL = (\d+)/;
   const match_total = content.match(regex_total);
   if (match_total) {
-    total = parseInt(match_total[1]);
+    total = parseInt(match_total[1], 10);
   } else {
     throw new Error('Page number not found');
   }
@@ -224,9 +224,9 @@ async function getBookNum(page: Page) {
   return num;
 }
 
-async function checkFile(path) {
+async function checkFile(filePath: string) {
   try {
-    await access(path, constants.F_OK);
+    await access(filePath, constants.F_OK);
     return true;
   } catch {
     return false;
