@@ -10,24 +10,20 @@ export const HOME_PAGE = "https://ritdon.com/epub_library.php";
 // tests/lib/ -> project root (two levels up)
 export const projectRoot = path.resolve(import.meta.dirname, '../..');
 
-export async function verify(page: Page, zero: boolean = true) {
+export async function verify(page: Page) {
   await page.waitForLoadState('networkidle');
   const btn = page.getByRole('button', { name: '验证' });
   const count = await btn.count();
   let answer = "";
   if (count > 0) {
-    if (zero) {
-      answer = "0";
-    } else {
-      const text = await page.locator("p").innerText();
-      console.log(text);
-      const regex = /\d+/g;
-      const match = text.match(regex);
-      if (match) {
-        const num1 = parseInt(match[0], 10);
-        const num2 = parseInt(match[1], 10);
-        answer = (num1 + num2).toString();
-      }
+    const text = await page.locator("p").innerText();
+    console.log(text);
+    const regex = /\d+/g;
+    const match = text.match(regex);
+    if (match) {
+      const num1 = parseInt(match[0], 10);
+      const num2 = parseInt(match[1], 10);
+      answer = (num1 + num2).toString();
     }
     await page.locator("input[name='antispider_captcha']").fill(answer);
     await btn.click();
@@ -38,7 +34,7 @@ export async function verify(page: Page, zero: boolean = true) {
 }
 
 export async function loading(page: Page) {
-  await verify(page, false);
+  await verify(page);
   await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 1200000 });
 }
 
@@ -220,7 +216,7 @@ export async function downloadBook(page: Page, index: number) {
   const bakFile = path.join(projectRoot, 'output', bookTitle, 'output.html.bak');
 
   if (await checkFile(file)) {
-      await rename(file, bakFile);
+    await rename(file, bakFile);
   }
 
   let img_index = 0;
