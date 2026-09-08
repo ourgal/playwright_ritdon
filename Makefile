@@ -1,7 +1,16 @@
 DIRS := $(wildcard output/*/)
 FILES := $(patsubst %, %temp.md, $(DIRS))
 title := titles/titles
-args := --headed
+args ?=
+
+ifneq ($(wildcard .env),)
+	include .env
+endif
+
+ifeq ($(HEADLESS),1)
+else
+	args += --headed
+endif
 
 all:
 	@pnpm exec patchright test $(args) tests/main.spec.ts
