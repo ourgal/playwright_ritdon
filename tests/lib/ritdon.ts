@@ -230,3 +230,39 @@ export async function downloadBook(page: Page, index: number) {
     img_index = await saveNextPage(page, bookTitle, img_index)
   }
 }
+
+export async function getBookTitles(page: Page, filePath: string) {
+  const count = await page.locator('div.book-title').count();
+  for (let i = 0; i < count; i++) {
+    const title = await getBookTitle(page, i)
+    await appendFile(filePath, title + '\n', 'utf8');
+  }
+}
+
+export async function getMaxPageNum(page: Page): Promise<number> {
+  const text = await page.locator('div.status-bar').innerText();
+  console.log(text)
+  const regex = /\d+\/(\d+)/;
+  const match = text.match(regex);
+  if (match) {
+    const num = match[1];
+    return parseInt(num, 10);
+  } else {
+    throw new Error('Max page number not found');
+  }
+}
+
+export async function blockImages(page: Page) {
+  // Intercept and block all image requests
+  await page.route('**/*', route => {
+    if (route.request().resourceType() === 'image') {
+      return route.abort();
+    }
+    return route.continue();
+  });
+}
+
+export async function switchCategory(page: Page, cat: string = 'traditional') {
+  await page.locator('select#cat-select').selectOption(cat);
+  await expect(page.getByRole('button', { name: '跳转' })).toBeVisible({ timeout: 10000 });
+}
