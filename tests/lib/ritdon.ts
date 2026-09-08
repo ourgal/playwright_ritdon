@@ -97,13 +97,26 @@ export async function saveBase64(raw: string, title: string, img_index: number) 
 
   const dir = path.join(projectRoot, 'output', title, 'images');
   await mkdir(dir, { recursive: true });
-  const img = path.join(dir, `${img_index}.jpg`);
+
+  // Determine file extension from the image type in the raw data
+  let extension = 'jpg';
+  let filename = `${img_index}.${extension}`;
+
+  if (raw.includes('image/png')) {
+    extension = 'png';
+    filename = `${img_index}.png`;
+  } else if (raw.includes('image/svg+xml')) {
+    extension = 'svg';
+    filename = `${img_index}.svg`;
+  }
+
+  const img = path.join(dir, filename);
 
   writeFile(img, base64Data, 'base64').catch((err: any) => {
     console.log(err);
   });
 
-  return { path: path.join('images', `${img_index}.jpg`), img_index: img_index + 1 };
+  return { path: path.join('images', filename), img_index: img_index + 1 };
 }
 
 export async function saveContent(page: Page, title: string, img_index: number) {
@@ -113,7 +126,7 @@ export async function saveContent(page: Page, title: string, img_index: number) 
   await expect(page.locator('button#btnPanel')).toBeVisible({ timeout: 60000 });
   const body = await page.locator('div.content-area').innerHTML();
 
-  const matches = body.match(/"(data:image\/jpeg;base64,.*?)"/g) || [];
+  const matches = body.match(/"(data:image\/(jpeg|png|svg\+xml);base64,.*?)"/g) || [];
 
   let tmpBody = body;
   for (const match of matches) {
