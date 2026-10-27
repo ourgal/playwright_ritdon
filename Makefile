@@ -44,6 +44,12 @@ md: ${FILES}
 
 ${FILES}:
 	pandoc -f html $(dir $@)output.html -t markdown -o $@ --wrap=none
+	sed -i '/^[[:space:]]*$$/d' $@
+	sed -i 's/^[[:space:]]*//' $@
+	perl -pi -e 's/\[([^\[\]]*?)\]\{\.tcy\}/\1/g' $@
+	perl -pi -e 's/\((.*?)\)\{\.fit\}/(\1)/g' $@
+	perl -pi -e 's/\[([^\[\]]*?)\]\{\.(gfont|em-dot)\}/\*\*\1\*\*/g' $@
+	sed -i 's/^\\\\$$//' $@
 
 PHONY: pull
 pull:
