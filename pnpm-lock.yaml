@@ -191,6 +191,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      opencc-js:
+        specifier: ^1.4.2
+        version: 1.4.2
       patchright:
         specifier: ^1.60.2
         version: 1.60.2
@@ -212,6 +215,9 @@ packages:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  opencc-js@1.4.2:
+    resolution: {integrity: sha512-EdcspgdROiCCZDM+jZR6Pa670xW+EW2QhctPBQ8gRjg6lrx4IHEl+2s+kt5izk/TkxVRgdWuFgaGkaEdIUfdaw==}
 
   patchright-core@1.60.2:
     resolution: {integrity: sha512-AzUYfbXla1/VVvIKJYK+tOQkdx7PwIM5qSnxz7Hnf2CcRdnqnM6n+goPQl3JLlLdeLj0WA6xlzRn2w/Da7wD4g==}
@@ -236,6 +242,8 @@ snapshots:
 
   fsevents@2.3.2:
     optional: true
+
+  opencc-js@1.4.2: {}
 
   patchright-core@1.60.2: {}
 

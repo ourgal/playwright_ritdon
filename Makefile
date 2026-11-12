@@ -49,3 +49,7 @@ ${FILES}:
 PHONY: pull
 pull:
 	@git pull origin
+
+PHONY: metadata
+metadata:
+	@node scripts/fetch_metadata.mjs $(args)

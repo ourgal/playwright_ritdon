@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
+    "opencc-js": "^1.4.2",
     "patchright": "^1.60.2"
   }
 }
