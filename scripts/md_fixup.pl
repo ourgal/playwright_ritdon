@@ -13,8 +13,10 @@ close $in;
 # whitespace cleanup (was done with sed before); a lone "\" becomes an empty
 # line, keeping the paragraph break it stood for
 $s =~ s/^[ \t]*\r?\n//mg;
-$s =~ s/^[ \t]+//mg;
+$s =~ s/^(?:[ \t]|\xC2\xA0|\xE3\x80\x80)+//mg;
 $s =~ s/^\\(\r?\n)/$1/mg;
+# a leading "\" that is not the end-of-line marker is dropped as well
+$s =~ s/^\\(?=[^\r\n])//mg;
 
 # tate-chu-yoko / fit-in-width wrappers
 $s =~ s/\[([^\[\]]*?)\]\{\.tcy\}/$1/g;
