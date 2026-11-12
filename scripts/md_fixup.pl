@@ -10,6 +10,9 @@ open my $in, '<:raw', $file or die "$file: $!";
 my $s = do { local $/; <$in> };
 close $in;
 
+# placeholder paragraphs left by chapters that failed to load
+$s =~ s/^(?:[ \t]|\xC2\xA0|\xE3\x80\x80)*无法加载章节内容(?:[ \t]|\xC2\xA0|\xE3\x80\x80)*(?:\r?\n|\z)//mg;
+
 # whitespace cleanup (was done with sed before); a lone "\" becomes an empty
 # line, keeping the paragraph break it stood for
 $s =~ s/^[ \t]*\r?\n//mg;
@@ -40,6 +43,17 @@ $s =~ s/(\]\([^)]*\))\{[^}]*\}/$1/g;
 
 # anything else (hfont, kfont, font-0em80, ...): keep the text, drop the wrapper
 $s =~ s/\[([^\[\]]*?)\]\{[^}]*\}/$1/g;
+
+# keep only the main text: everything up to the table of contents (a heading
+# such as "目次"/"目录"/"CONTENTS" followed by its links) is dropped
+my $toc_head = qr/^[ \t]*(?:\#{1,6}[ \t]*)?(?:\*\*)?(?:目(?:[ \t]|\xC2\xA0|\xE3\x80\x80)?(?:次|录|錄|録)|もくじ|(?:CONTENTS|ＣＯＮＴＥＮＴＳ)\.?)(?:\*\*)?[ \t]*\r?\n/m;
+my $last;
+while ($s =~ /$toc_head/g) { $last = pos($s); }
+if (defined $last) {
+	my $rest = substr($s, $last);
+	$rest =~ s/\A(?:[ \t]*\r?\n|[ \t]*(?:\d+\.[ \t]*)?\[[^\]]*\]\([^)]*\)[ \t]*\r?\n)*//;
+	$s = $rest;
+}
 
 open my $out, '>:raw', $file or die "$file: $!";
 print $out $s;
