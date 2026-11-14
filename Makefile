@@ -53,3 +53,13 @@ pull:
 PHONY: metadata
 metadata:
 	@node scripts/fetch_metadata.mjs $(args)
+
+# Crawl book ids from the real www.wenku8.net (Cloudflare-protected). Needs
+# WENKU8_COOKIES in .env (or WENKU8_USERNAME/WENKU8_PASSWORD + a headed browser).
+# Uses its own index file - these ids differ from the wowenku.com ones above.
+.PHONY: wenku8_net
+wenku8_net:
+	@node scripts/fetch_wenku8_net_ids.mjs $(args)
+
+wenku8_net_crawl:
+	@node scripts/fetch_wenku8_net_ids.mjs --max-pages $(pages) $(args)
