@@ -465,9 +465,12 @@ function matchTitle(raw) {
 	}
 	// 7) ritdon uses a ：-delimited part marker while wenku8 has only the series
 	// name: "小書痴的下剋上：第三部_領主的養女Ⅱ" -> "小书痴的下克上".
-	const colonHead = raw.split(/[：:]/)[0];
+	// "結與書：《咆哮山莊》的繼承者" / "結與書《夜長姬與耳男》的青澀遊戲" - the
+	// series name is followed by a colon or an opening book bracket, and short
+	// series names (3 chars) like 結與書 are common enough to be worth allowing.
+	const colonHead = raw.split(/[：:《]/)[0];
 	const cn = norm(colonHead);
-	if (colonHead !== raw && cn.length >= 4) {
+	if (colonHead !== raw && cn.length >= 3) {
 		const r = byNorm.get(cn) ?? spaceHeadMap.get(cn);
 		if (r) return { row: r, s: 1, confidence: 'high', method: 'colon-head' };
 	}
