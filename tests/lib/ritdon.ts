@@ -10,23 +10,27 @@ export const HOME_PAGE = "https://ritdon.com/epub_library.php";
 // tests/lib/ -> project root (two levels up)
 export const projectRoot = path.resolve(import.meta.dirname, '../..');
 
+// The math captcha is an addition shown in a <p>. Match the equation itself
+// instead of "the first <p>" so a second paragraph on the page cannot feed the
+// wrong text in (and locator("p").innerText() would throw in strict mode).
+export function parseCaptcha(text: string): string {
+  const match = text.match(/(\d+)\s*[+＋]\s*(\d+)/);
+  if (!match) {
+    throw new Error(`Math captcha not parseable from: "${text.trim()}"`);
+  }
+  return String(parseInt(match[1], 10) + parseInt(match[2], 10));
+}
+
 export async function verify(page: Page) {
   await page.waitForLoadState('networkidle');
   const btn = page.getByRole('button', { name: '验证' });
   const count = await btn.count();
-  let answer = "";
   if (count > 0) {
-    const text = await page.locator("p").innerText();
+    const text = await page.locator('p').filter({ hasText: /\d+\s*[+＋]\s*\d+/ }).first().innerText();
     console.log(text);
-    const regex = /\d+/g;
-    const match = text.match(regex);
-    if (match) {
-      const num1 = parseInt(match[0], 10);
-      const num2 = parseInt(match[1], 10);
-      answer = (num1 + num2).toString();
-    }
-    await page.locator("input[name='antispider_captcha']").fill(answer);
-    await btn.click();
+    const answer = parseCaptcha(text);
+    await page.locator("input[name='antispider_captcha']").first().fill(answer);
+    await btn.first().click();
     return true;
   } else {
     return false;
