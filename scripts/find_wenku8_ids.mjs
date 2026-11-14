@@ -98,7 +98,7 @@ function score(title, cand) {
 const stripPrefix = s => s.replace(/^(?:(?:輕小說|轻小说|小說|小说|動畫|动画|漫畫|漫画|文庫|文库|新裝版|新装版|完全版|限定版|特裝版|特装版)[\s_.．・:：\-]*)+/i, '');
 const stripEdition = s => s.replace(/(?:新裝版|新装版|完全版|限定版|特裝版|特装版|文庫版|文库版|豪華版|豪华版|新訳版|新译版)/gi, '');
 const stripVol = s => s
-	.replace(/[\s_]*[（(【\[]?\d+(?:\.\d+)?[）)】\]]?\s*$/, '')
+	.replace(/[\s_]*[（(【\[]?[0-9０-９]+(?:\.[0-9０-９]+)?[）)】\]]?\s*$/, '')
 	.replace(/[\s_]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+\s*$/, '')
 	.replace(/[\s_]*第[零〇一二三四五六七八九十百\d]+[卷冊册集部篇話话]\s*$/i, '')
 	.trim();
@@ -121,6 +121,13 @@ const withX = s => s.replace(/[×╳✕✖]/g, 'x');
 // Likewise "&"/"＆" is stripped as punctuation while wenku8 writes the Chinese
 // character "与" ("电波女与青春男"). Decode the stray &amp; entity too.
 const withAnd = s => s.replace(/&amp;/gi, '&').replace(/[&＆]/g, '与');
+// wenku8 spells a numeral with a CJK character where ritdon uses a digit:
+// "其中１個是妹妹！" vs "其中一个是妹妹". Decode every digit so the exact pass
+// can still find the book.
+const withCJKNumeral = s => s.replace(/[0-9０-９]/g, c => {
+	const d = c.charCodeAt(0) - (c >= '０' ? 0xff10 : 0x30);
+	return '〇一二三四五六七八九'[d] ?? c;
+});
 const clean = s => stripVol(stripEdition(stripPrefix(s)));
 
 function variants(raw) {
@@ -158,6 +165,11 @@ function variants(raw) {
 		head(withAnd(raw)),
 		cutAtFirstDigit(withAnd(raw)),
 		cutAtRoman(withAnd(raw)),
+		// additive: digits -> CJK numerals (kept last, same as the others).
+		withCJKNumeral(raw),
+		withCJKNumeral(stripVol(raw)),
+		withCJKNumeral(clean(raw)),
+		withCJKNumeral(head(raw)),
 		// cut at a ～-delimited subtitle (guarded, kept last).
 		...(/[\u4e00-\u9fff]/.test(cutAtTilde(raw)) && norm(cutAtTilde(raw)).length >= 4
 			? [cutAtTilde(raw), cutAtTilde(clean(raw))] : []),
