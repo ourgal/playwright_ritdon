@@ -293,17 +293,25 @@ const cjkTailMap = new Map([...cjkTailOwners]
 // FIRST volume's ("青春猪头少年不会梦到兔女郎学姊"), so ritdon's later volumes
 // share a long prefix and swap the volume subtitle
 // ("青春豬頭少年不會夢到嬌憐外出妹"). Any later volume would otherwise never
-// match anything. Keyed by the first PREFIX_MIN normalized chars, so a lookup
+// match anything. Keyed by the first PREFIX_SHORT normalized chars, so a lookup
 // only scans the books that can possibly share such a prefix.
 const PREFIX_MIN = 8;
+const PREFIX_SHORT = 4;
 const CJK_ONLY = /^[\u4e00-\u9fff]+$/;
 const prefixIndex = new Map();
+// How many distinct books share each 4-char prefix. The short-prefix fallback
+// below is only trusted when the prefix points at a single book: otherwise a
+// franchise with a generic "…系列"/"…物语" entry (e.g. 火影忍者 has 秘传系列,
+// 迅雷传, 鼬真传, ...) would pull every unknown volume onto that entry.
+const prefixOwners = new Map();
 for (const r of rows) {
 	for (const f of r.forms) {
-		if (f.length <= PREFIX_MIN) continue;
-		const key = f.slice(0, PREFIX_MIN);
+		if (f.length <= PREFIX_SHORT) continue;
+		const key = f.slice(0, PREFIX_SHORT);
 		if (!prefixIndex.has(key)) prefixIndex.set(key, []);
 		prefixIndex.get(key).push({ r, f });
+		if (!prefixOwners.has(key)) prefixOwners.set(key, new Set());
+		prefixOwners.get(key).add(r.id);
 	}
 }
 
@@ -311,19 +319,29 @@ for (const r of rows) {
 // remainder ("…EXTRA_讓笨蛋登上舞台吧", "…anthology01", "…Ｉ") usually marks a
 // spin-off that wenku8 may list as its own book, so those are left unmatched
 // rather than guessed. And only an unambiguous single book id is accepted.
+// Some series entries are named after the series rather than its first volume
+// ("凉宫春日物语" for all 13 涼宮春日 volumes), which leaves a shorter shared
+// prefix. Accept those only when the wenku8 remainder is a generic series word,
+// so "大小姐×战车" cannot be pulled onto "大小姐X执事".
+const SERIES_TAIL_RE = /(?:物语|系列)$/;
+
 function seriesPrefixMatch(varsArr) {
 	const best = new Map();
 	for (const n of varsArr) {
-		if (n.length <= PREFIX_MIN + 1) continue;
-		const list = prefixIndex.get(n.slice(0, PREFIX_MIN));
+		if (n.length <= PREFIX_SHORT + 1) continue;
+		const list = prefixIndex.get(n.slice(0, PREFIX_SHORT));
 		if (!list) continue;
 		for (const { r, f } of list) {
 			let l = 0;
 			while (l < n.length && l < f.length && n[l] === f[l]) l++;
-			if (l < PREFIX_MIN) continue;
+			if (l < PREFIX_SHORT) continue;
 			const a = n.slice(l);
 			const b = f.slice(l);
 			if (a.length < 2 || b.length < 2 || !CJK_ONLY.test(a) || !CJK_ONLY.test(b)) continue;
+			if (l < PREFIX_MIN) {
+				if (!SERIES_TAIL_RE.test(b)) continue;
+				if (prefixOwners.get(n.slice(0, PREFIX_SHORT))?.size !== 1) continue;
+			}
 			const prev = best.get(r.id);
 			if (!prev || l > prev.l) best.set(r.id, { l, r });
 		}
