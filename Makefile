@@ -63,3 +63,9 @@ wenku8_net:
 
 wenku8_net_crawl:
 	@node scripts/fetch_wenku8_net_ids.mjs --max-pages $(pages) $(args)
+
+# Match the ritdon titles (titles/*.txt) against the wenku8.net id index and
+# write titles/wenku8_ids.csv. Purely offline, no cookies needed.
+.PHONY: wenku8_ids
+wenku8_ids:
+	@node scripts/find_wenku8_ids.mjs $(args)
