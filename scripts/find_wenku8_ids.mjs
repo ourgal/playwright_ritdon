@@ -239,6 +239,23 @@ const cjkHeadMap = new Map([...cjkHeadOwners]
 	.filter(([, v]) => v.length === 1)
 	.map(([k, v]) => [k, v[0]]));
 
+// The mirror image of cjkHeadMap: some wenku8 titles carry a Latin/digit
+// PREFIX before the CJK name ("Infinite Dendrogram 无尽连锁", "My Youth
+// Romantic Comedy 我的青春恋爱物语果然有问题"). ritdon often drops that prefix
+// and keeps only the CJK name ("无尽连锁_13猎首兔之战"). Register the trailing
+// CJK run as a key, unambiguously and last-resort only.
+const cjkTailOf = n => (n.match(/[\u4e00-\u9fff]+$/) ?? [''])[0];
+const cjkTailOwners = new Map();
+for (const r of rows) {
+	const t = cjkTailOf(r.n);
+	if (t.length < 4 || t === r.n) continue;
+	if (!cjkTailOwners.has(t)) cjkTailOwners.set(t, []);
+	cjkTailOwners.get(t).push(r);
+}
+const cjkTailMap = new Map([...cjkTailOwners]
+	.filter(([, v]) => v.length === 1)
+	.map(([k, v]) => [k, v[0]]));
+
 // Inverted bigram index so fuzzy matching only scores plausible candidates.
 const posting = new Map();
 rows.forEach((r, i) => {
@@ -273,6 +290,15 @@ function matchTitle(raw) {
 	for (const n of vars) {
 		const r = byNorm.get(n);
 		if (r) return { row: r, s: 1, confidence: 'exact', method: n === norm(raw) ? 'exact' : 'exact-stripped' };
+	}
+	// 1b) the wenku8 title carries a Latin/digit PREFIX before the CJK name
+	// ("Infinite Dendrogram 无尽连锁") while ritdon dropped it and kept only
+	// the CJK name ("无尽连锁_13猎首兔之战"). Match against the index title's
+	// trailing CJK run, unambiguously only.
+	for (const n of vars) {
+		if (n.length < 4) continue;
+		const r = cjkTailMap.get(n);
+		if (r) return { row: r, s: 1, confidence: 'high', method: 'cjk-tail' };
 	}
 	// 2) fuzzy: collect candidates once, score each against every variant
 	const candIds = new Set();
@@ -362,7 +388,7 @@ const todo = limit ? titles.slice(0, limit) : titles;
 const COLUMNS = ['title', 'wenku8_id', 'wenku8_title', 'library', 'url', 'confidence', 'score', 'method'];
 const quote = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const result = [];
-const counts = { exact: 0, 'exact-stripped': 0, 'first-segment': 0, 'space-head': 0, 'cjk-head': 0, 'latin-prefix': 0, 'colon-head': 0, high: 0, medium: 0, low: 0, none: 0 };
+const counts = { exact: 0, 'exact-stripped': 0, 'first-segment': 0, 'space-head': 0, 'cjk-head': 0, 'cjk-tail': 0, 'latin-prefix': 0, 'colon-head': 0, high: 0, medium: 0, low: 0, none: 0 };
 const fuzzySamples = [];
 const notFoundSamples = [];
 
@@ -392,7 +418,7 @@ fs.writeFileSync(outFile, lines.join('\n') + '\n');
 const matched = result.filter(r => r.wenku8_id !== '').length;
 console.log(`titles:  ${todo.length} unique (from ${titleFiles.length} file(s))`);
 console.log(`index:   ${rows.length} wenku8 ids`);
-console.log(`matched: ${matched}  (exact ${counts.exact}, exact-stripped ${counts['exact-stripped']}, first-segment ${counts['first-segment']}, space-head ${counts['space-head']}, cjk-head ${counts['cjk-head']}, latin-prefix ${counts['latin-prefix']}, colon-head ${counts['colon-head']}, fuzzy ${counts.high + counts.medium + counts.low})`);
+console.log(`matched: ${matched}  (exact ${counts.exact}, exact-stripped ${counts['exact-stripped']}, first-segment ${counts['first-segment']}, space-head ${counts['space-head']}, cjk-head ${counts['cjk-head']}, cjk-tail ${counts['cjk-tail']}, latin-prefix ${counts['latin-prefix']}, colon-head ${counts['colon-head']}, fuzzy ${counts.high + counts.medium + counts.low})`);
 console.log(`  fuzzy confidence: high ${counts.high}, medium ${counts.medium}, low ${counts.low}`);
 console.log(`not found: ${counts.none}`);
 console.log(`-> ${path.relative(ROOT, outFile)}`);
