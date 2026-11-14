@@ -99,7 +99,7 @@ function score(title, cand) {
 
 // ritdon title -> several cleaned forms, from most specific to most general.
 const stripPrefix = s => s.replace(/^(?:(?:輕小說|轻小说|小說|小说|動畫|动画|漫畫|漫画|文庫|文库|新裝版|新装版|完全版|限定版|特裝版|特装版)[\s_.．・:：\-]*)+/i, '');
-const stripEdition = s => s.replace(/(?:新裝版|新装版|完全版|限定版|特裝版|特装版|文庫版|文库版|豪華版|豪华版|新訳版|新译版)/gi, '');
+const stripEdition = s => s.replace(/(?:新裝版|新装版|完全版|限定版|特裝版|特装版|文庫版|文库版|豪華版|豪华版|新訳版|新译版|小說版|小说版)/gi, '');
 const stripVol = s => s
 	.replace(/[\s_]*[（(【\[]?[0-9０-９]+(?:\.[0-9０-９]+)?[）)】\]]?\s*$/, '')
 	.replace(/[\s_]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+\s*$/, '')
@@ -115,6 +115,10 @@ const cutAtDigit = s => s.replace(/([\u4e00-\u9fff]{4,})\d[\s\S]*$/, '$1');
 const cutAtFirstDigit = s => s.replace(/\d[\s\S]*$/, ''); // "系列-10.副標" -> "系列"
 // A Roman numeral in the middle is usually a volume marker: "銃皇…法夫納Ⅱ_無瑕之緋".
 const cutAtRoman = s => s.split(ROMAN_RE)[0].trim();
+// The same marker written with ASCII letters and delimited by separators
+// ("排球少年!!小說版!!_I_烏野強化合宿"). Only a standalone [ivxlcdm]+ token
+// counts, so a Latin word like "Appendix" cannot truncate the title.
+const cutAtLatinRoman = s => s.split(/(?<=[\s_])[ivxlcdm]+(?=[\s_]|$)/i)[0].trim();
 // ritdon often appends the volume subtitle after an underscore while wenku8
 // stores only the series name: "才女的侍從_在滿是…大小姐_9" -> "才女的侍從".
 // Keep it as a last-resort variant, and only for a substantial CJK-heavy head.
@@ -157,6 +161,8 @@ function variants(raw) {
 		cutAtFirstDigit(clean(raw)),
 		cutAtRoman(raw),
 		cutAtRoman(clean(raw)),
+		cutAtLatinRoman(raw),
+		cutAtLatinRoman(clean(raw)),
 		// additive: the same title with × -> x (kept last so the original
 		// ×-stripped spelling still wins when both happen to be valid keys).
 		withX(raw),
