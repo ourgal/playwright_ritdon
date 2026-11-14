@@ -322,9 +322,16 @@ function matchTitle(raw) {
 	// Keep this OUT of variants() - as an exact-pass variant it would override
 	// correct spin-off matches with a generic base-series hit.
 	const seg = firstSegment(raw);
-	if (seg !== raw && /[\u4e00-\u9fff]/.test(seg) && norm(seg).length >= 4) {
-		const r = byNorm.get(norm(seg));
-		if (r) return { row: r, s: 1, confidence: 'exact', method: 'first-segment' };
+	if (seg !== raw && /[\u4e00-\u9fff]/.test(seg)) {
+		const sn = norm(seg);
+		// Allow a short (even 2-char) first segment only when it is itself an
+		// exact wenku8 title key ("人生_第１章" -> "人生", id 1434); otherwise keep
+		// the >=4 guard so a generic base-series truncation cannot steal a correct
+		// spin-off match.
+		if (sn.length >= 4 || byNorm.has(sn)) {
+			const r = byNorm.get(sn);
+			if (r) return { row: r, s: 1, confidence: 'exact', method: 'first-segment' };
+		}
 	}
 	// 4) wenku8 has a space-separated subtitle, ritdon only the main name.
 	// Last-resort only (and unambiguous heads only), so it cannot steal a
