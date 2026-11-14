@@ -407,6 +407,13 @@ function matchTitle(raw) {
 		if (sn.length >= 4 || byNorm.has(sn)) {
 			const r = byNorm.get(sn);
 			if (r) return { row: r, s: 1, confidence: 'exact', method: 'first-segment' };
+			// cjkHeadMap only holds books whose title is "CJK name + Latin suffix",
+			// so it is safe to fall back to it: "玲依的世界_─Re_I─_1" finds
+			// "玲依的世界―Re:I―Another World Tour" (3516). spaceHeadMap is NOT
+			// used here - its keys are generic truncations ("火影忍者"), which
+			// would map every 秘傳 volume onto the same 鼬真传 book.
+			const h = cjkHeadMap.get(sn);
+			if (h) return { row: h, s: 1, confidence: 'high', method: 'first-segment' };
 		}
 	}
 	// 4) wenku8 has a space-separated subtitle, ritdon only the main name.
