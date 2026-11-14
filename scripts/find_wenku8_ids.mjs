@@ -62,6 +62,9 @@ const ROMAN_RE = /[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]
 // ritdon title contain the clean wenku8 title as a substring - which the
 // fuzzy scorer rewards via its containment bonus.
 const norm = s => tw2cn(String(s ?? ''))
+	// ritdon keeps the Japanese possessive "の" where wenku8 writes the Chinese
+	// "之" ("奇諾の旅" vs "奇诺之旅"). Fold it symmetrically.
+	.replace(/の/g, '之')
 	.replace(/[０-９Ａ-Ｚａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
 	.replace(ROMAN_RE, c => ROMAN[c])
 	.toLowerCase()
@@ -100,6 +103,10 @@ const stripEdition = s => s.replace(/(?:新裝版|新装版|完全版|限定版|
 const stripVol = s => s
 	.replace(/[\s_]*[（(【\[]?[0-9０-９]+(?:\.[0-9０-９]+)?[）)】\]]?\s*$/, '')
 	.replace(/[\s_]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]+\s*$/, '')
+	// ritdon also writes the volume as ASCII roman letters, sometimes mixed with
+	// the Unicode forms ("奇諾の旅_XXⅢ" -> "..._XX" -> "奇諾の旅"), where wenku8
+	// keeps only the series name.
+	.replace(/[\s_]*[ivxlcdm]+\s*$/i, '')
 	.replace(/[\s_]*第[零〇一二三四五六七八九十百\d]+[卷冊册集部篇話话]\s*$/i, '')
 	.trim();
 const head = s => s.split(/[（(【\[「『〈]/)[0].trim();
