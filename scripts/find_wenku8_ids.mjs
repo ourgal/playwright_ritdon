@@ -129,6 +129,9 @@ const cutAtTilde = s => s.split(/[～~〜]/)[0].trim();
 // "×" (a symbol) is stripped by norm, but wenku8 often writes the ASCII letter
 // "X" instead ("大小姐X执事"). Try both spellings so neither loses a match.
 const withX = s => s.replace(/[×╳✕✖]/g, 'x');
+// The mirror case: ritdon writes a plain "HxH" where wenku8 writes "H×H" and the
+// × is stripped by norm, so the ritdon x is the odd one out. Drop x entirely.
+const withoutX = s => s.replace(/[xX×╳✕✖]/g, '');
 // Likewise "&"/"＆" is stripped as punctuation while wenku8 writes the Chinese
 // character "与" ("电波女与青春男"). Decode the stray &amp; entity too.
 const withAnd = s => s.replace(/&amp;/gi, '&').replace(/[&＆]/g, '与');
@@ -163,6 +166,11 @@ function variants(raw) {
 		cutAtRoman(clean(raw)),
 		cutAtLatinRoman(raw),
 		cutAtLatinRoman(clean(raw)),
+		// additive: drop x/× altogether ("魔裝學園HxH" -> "魔裝學園HH").
+		withoutX(raw),
+		stripVol(withoutX(raw)),
+		clean(withoutX(raw)),
+		head(withoutX(raw)),
 		// additive: the same title with × -> x (kept last so the original
 		// ×-stripped spelling still wins when both happen to be valid keys).
 		withX(raw),
