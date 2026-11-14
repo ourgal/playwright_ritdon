@@ -119,6 +119,13 @@ const cutAtRoman = s => s.split(ROMAN_RE)[0].trim();
 // ("排球少年!!小說版!!_I_烏野強化合宿"). Only a standalone [ivxlcdm]+ token
 // counts, so a Latin word like "Appendix" cannot truncate the title.
 const cutAtLatinRoman = s => s.split(/(?<=[\s_])[ivxlcdm]+(?=[\s_]|$)/i)[0].trim();
+// …and sometimes it is glued straight onto the CJK name, with no separator at
+// all: "銃皇無盡的法夫納XIII星塵之泣", "…法夫納XIV_虹色碎片". Cut at the first ASCII
+// roman run that directly follows a CJK character.
+const cutAtGluedRoman = s => {
+	const m = s.match(/[\u4e00-\u9fff][ivxlcdm]+(?=[\u4e00-\u9fff\s_]|$)/i);
+	return m ? s.slice(0, m.index + 1) : s;
+};
 // ritdon often appends the volume subtitle after an underscore while wenku8
 // stores only the series name: "才女的侍從_在滿是…大小姐_9" -> "才女的侍從".
 // Keep it as a last-resort variant, and only for a substantial CJK-heavy head.
@@ -166,6 +173,8 @@ function variants(raw) {
 		cutAtRoman(clean(raw)),
 		cutAtLatinRoman(raw),
 		cutAtLatinRoman(clean(raw)),
+		cutAtGluedRoman(raw),
+		cutAtGluedRoman(clean(raw)),
 		// additive: drop x/× altogether ("魔裝學園HxH" -> "魔裝學園HH").
 		withoutX(raw),
 		stripVol(withoutX(raw)),
