@@ -346,10 +346,20 @@ function seriesPrefixMatch(varsArr) {
 			if (l < PREFIX_SHORT) continue;
 			const a = n.slice(l);
 			const b = f.slice(l);
-			if (a.length < 2 || b.length < 2 || !CJK_ONLY.test(a) || !CJK_ONLY.test(b)) continue;
-			if (l < PREFIX_MIN) {
-				if (!SERIES_TAIL_RE.test(b)) continue;
+			if (b.length < 2) continue;
+			if (!a) {
+				// ritdon sometimes keeps only the head of the wenku8 title
+				// ("持續狩獵史萊姆三百年(02)" vs "持续狩猎史莱姆三百年，不知不觉就练到
+				// LV MAX"). Accept a strict prefix only when it is long and owned by
+				// a single book.
+				if (l < PREFIX_MIN) continue;
 				if (prefixOwners.get(n.slice(0, PREFIX_SHORT))?.size !== 1) continue;
+			} else {
+				if (a.length < 2 || !CJK_ONLY.test(a) || !CJK_ONLY.test(b)) continue;
+				if (l < PREFIX_MIN) {
+					if (!SERIES_TAIL_RE.test(b)) continue;
+					if (prefixOwners.get(n.slice(0, PREFIX_SHORT))?.size !== 1) continue;
+				}
 			}
 			const prev = best.get(r.id);
 			if (!prev || l > prev.l) best.set(r.id, { l, r });
