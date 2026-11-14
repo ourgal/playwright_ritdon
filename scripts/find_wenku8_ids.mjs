@@ -256,6 +256,49 @@ const cjkTailMap = new Map([...cjkTailOwners]
 	.filter(([, v]) => v.length === 1)
 	.map(([k, v]) => [k, v[0]]));
 
+// 8) Series-prefix: wenku8 stores a whole series as ONE book whose title is the
+// FIRST volume's ("青春猪头少年不会梦到兔女郎学姊"), so ritdon's later volumes
+// share a long prefix and swap the volume subtitle
+// ("青春豬頭少年不會夢到嬌憐外出妹"). Any later volume would otherwise never
+// match anything. Keyed by the first PREFIX_MIN normalized chars, so a lookup
+// only scans the books that can possibly share such a prefix.
+const PREFIX_MIN = 8;
+const CJK_ONLY = /^[\u4e00-\u9fff]+$/;
+const prefixIndex = new Map();
+for (const r of rows) {
+	for (const f of r.forms) {
+		if (f.length <= PREFIX_MIN) continue;
+		const key = f.slice(0, PREFIX_MIN);
+		if (!prefixIndex.has(key)) prefixIndex.set(key, []);
+		prefixIndex.get(key).push({ r, f });
+	}
+}
+
+// Both remainders must be real pure-CJK volume subtitles. A Latin/digit
+// remainder ("…EXTRA_讓笨蛋登上舞台吧", "…anthology01", "…Ｉ") usually marks a
+// spin-off that wenku8 may list as its own book, so those are left unmatched
+// rather than guessed. And only an unambiguous single book id is accepted.
+function seriesPrefixMatch(varsArr) {
+	const best = new Map();
+	for (const n of varsArr) {
+		if (n.length <= PREFIX_MIN + 1) continue;
+		const list = prefixIndex.get(n.slice(0, PREFIX_MIN));
+		if (!list) continue;
+		for (const { r, f } of list) {
+			let l = 0;
+			while (l < n.length && l < f.length && n[l] === f[l]) l++;
+			if (l < PREFIX_MIN) continue;
+			const a = n.slice(l);
+			const b = f.slice(l);
+			if (a.length < 2 || b.length < 2 || !CJK_ONLY.test(a) || !CJK_ONLY.test(b)) continue;
+			const prev = best.get(r.id);
+			if (!prev || l > prev.l) best.set(r.id, { l, r });
+		}
+	}
+	if (best.size !== 1) return null;
+	return [...best.values()][0];
+}
+
 // Inverted bigram index so fuzzy matching only scores plausible candidates.
 const posting = new Map();
 rows.forEach((r, i) => {
@@ -370,6 +413,10 @@ function matchTitle(raw) {
 		const r = byNorm.get(cn) ?? spaceHeadMap.get(cn);
 		if (r) return { row: r, s: 1, confidence: 'high', method: 'colon-head' };
 	}
+	// 8) wenku8 keeps one book per series (titled after its first volume) while
+	// ritdon lists every volume, so later volumes only share a long prefix.
+	const sp = seriesPrefixMatch(vars);
+	if (sp) return { row: sp.r, s: 0.9, confidence: 'medium', method: 'series-prefix' };
 	return { row: null, s: best?.s ?? 0, confidence: '', method: 'none' };
 }
 
@@ -395,7 +442,7 @@ const todo = limit ? titles.slice(0, limit) : titles;
 const COLUMNS = ['title', 'wenku8_id', 'wenku8_title', 'library', 'url', 'confidence', 'score', 'method'];
 const quote = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const result = [];
-const counts = { exact: 0, 'exact-stripped': 0, 'first-segment': 0, 'space-head': 0, 'cjk-head': 0, 'cjk-tail': 0, 'latin-prefix': 0, 'colon-head': 0, high: 0, medium: 0, low: 0, none: 0 };
+const counts = { exact: 0, 'exact-stripped': 0, 'first-segment': 0, 'space-head': 0, 'cjk-head': 0, 'cjk-tail': 0, 'latin-prefix': 0, 'colon-head': 0, 'series-prefix': 0, high: 0, medium: 0, low: 0, none: 0 };
 const fuzzySamples = [];
 const notFoundSamples = [];
 
@@ -425,7 +472,7 @@ fs.writeFileSync(outFile, lines.join('\n') + '\n');
 const matched = result.filter(r => r.wenku8_id !== '').length;
 console.log(`titles:  ${todo.length} unique (from ${titleFiles.length} file(s))`);
 console.log(`index:   ${rows.length} wenku8 ids`);
-console.log(`matched: ${matched}  (exact ${counts.exact}, exact-stripped ${counts['exact-stripped']}, first-segment ${counts['first-segment']}, space-head ${counts['space-head']}, cjk-head ${counts['cjk-head']}, cjk-tail ${counts['cjk-tail']}, latin-prefix ${counts['latin-prefix']}, colon-head ${counts['colon-head']}, fuzzy ${counts.high + counts.medium + counts.low})`);
+console.log(`matched: ${matched}  (exact ${counts.exact}, exact-stripped ${counts['exact-stripped']}, first-segment ${counts['first-segment']}, space-head ${counts['space-head']}, cjk-head ${counts['cjk-head']}, cjk-tail ${counts['cjk-tail']}, latin-prefix ${counts['latin-prefix']}, colon-head ${counts['colon-head']}, series-prefix ${counts['series-prefix']}, fuzzy ${counts.high + counts.medium + counts.low})`);
 console.log(`  fuzzy confidence: high ${counts.high}, medium ${counts.medium}, low ${counts.low}`);
 console.log(`not found: ${counts.none}`);
 console.log(`-> ${path.relative(ROOT, outFile)}`);
