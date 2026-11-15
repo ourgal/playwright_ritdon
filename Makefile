@@ -77,3 +77,12 @@ wenku8_volumes:
 .PHONY: wenku8_ids
 wenku8_ids:
 	@node scripts/find_wenku8_ids.mjs $(args)
+
+# Fetch 內容簡介 from books.com.tw through FlareSolverr (every volume of each
+# series) into titles/intros.json + titles/intros.csv. examples:
+#   make intros                          # only series missing from the cache
+#   make intros args='--q "圖書迷宮"'     # one title (or isbn), no sweep
+#   make intros args='--merge-only'       # rewrite intros.* from the caches, offline
+.PHONY: intros
+intros:
+	@node scripts/fetch_intros.mjs $(args)
