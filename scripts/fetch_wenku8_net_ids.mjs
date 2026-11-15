@@ -18,8 +18,8 @@
 //   --catalog <url>          page template, default .../articlelist.php?page=
 //   --start-page N           first page (default 1)
 //   --max-pages N            pages this run (default 0 = all)
-//   --concurrency N          parallel browser pages (default 2; the site 429s on bursts)
-//   --delay ms               pause between batches (default 800)
+//   --concurrency N          parallel browser pages (default 1; the site 429s hard)
+//   --delay ms               pause between batches (default 2500, +0-50% jitter)
 //   --id-pattern <regex>     override book-id link pattern
 //   --out <file>             default titles/wenku8_net_index.json
 //   --refresh                discard cached index
@@ -122,7 +122,7 @@ export function loadCookies(input) {
 	}).filter(c => c && c.name);
 }
 
-function toPlaywrightCookies(list) {
+export function toPlaywrightCookies(list) {
 	return list.map(c => {
 		const out = {
 			name: c.name,
@@ -178,8 +178,8 @@ export function parseCatalog(html, idPattern = DEFAULT_ID_PATTERN, base = SITE) 
 	return { total, books };
 }
 
-async function fetchPage(page, url) {
-	for (let attempt = 0; attempt < 5; attempt++) {
+export async function fetchPage(page, url) {
+	for (let attempt = 0; attempt < 6; attempt++) {
 		try {
 			const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 			const status = resp?.status() ?? 0;
@@ -195,9 +195,11 @@ async function fetchPage(page, url) {
 			if (html.length < 3000) throw new Error(`short page (${html.length} bytes)`);
 			return html;
 		} catch (e) {
-			if (attempt === 4) throw e;
-			const wait = 3000 * 2 ** attempt;
-			console.warn(`    retry ${attempt + 1}/4 in ${wait / 1000}s: ${e.message.split('\n')[0]}`);
+			if (attempt === 5) throw e;
+			// Back off hard: 5s, 10s, 20s, 40s, 80s plus jitter, so a burst cannot
+			// turn into a run of immediate retries against the same rate limiter.
+			const wait = 5000 * 2 ** attempt + Math.floor(Math.random() * 2000);
+			console.warn(`    retry ${attempt + 1}/5 in ${wait / 1000}s: ${e.message.split('\n')[0]}`);
 			await sleep(wait);
 		}
 	}
@@ -254,8 +256,8 @@ async function main() {
 	const catalog = opt('--catalog', DEFAULT_CATALOG);
 	const startPage = num('--start-page', 1);
 	const maxPages = num('--max-pages', 0);
-	const concurrency = Math.max(1, num('--concurrency', 2));
-	const delay = num('--delay', 800);
+	const concurrency = Math.max(1, num('--concurrency', 1));
+	const delay = num('--delay', 2500);
 	const idPattern = opt('--id-pattern', DEFAULT_ID_PATTERN);
 	const outFile = opt('--out', DEFAULT_INDEX);
 	const dumpPage = opt('--dump-page', '');
@@ -336,7 +338,7 @@ async function main() {
 			save();
 			console.log(`  ${Math.min(i + concurrency, todo.length)}/${todo.length} pages, ${Object.keys(index).length} ids`);
 		}
-		if (delay) await sleep(delay);
+		if (delay) await sleep(delay * (1 + Math.random() * 0.5));
 	}
 	save();
 	await browser.close();

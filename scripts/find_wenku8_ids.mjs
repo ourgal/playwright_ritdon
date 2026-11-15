@@ -19,12 +19,16 @@
 //                       (default titles/titles.txt,titles/titles_zht.txt,titles/titles_other.txt;
 //                        titles.txt is already the superset of the other two)
 //   --out <file>        result CSV (default titles/wenku8_ids.csv)
+//   --volumes <file>    per-series volume list used for the volume columns
+//                       (default titles/wenku8_net_volumes.json, from
+//                        scripts/fetch_wenku8_volumes.mjs; optional)
 //   --min-score <0..1>  accept a fuzzy match at/above this (default 0.55)
 //   --limit N           only process the first N titles (debug)
 //   --show N            sample rows printed for fuzzy / not-found (default 12)
 import fs from 'node:fs';
 import path from 'node:path';
 import * as OpenCC from 'opencc-js';
+import { ritdonVolume } from './vol_label.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -500,6 +504,76 @@ function matchTitle(raw) {
 	return { row: null, s: best?.s ?? 0, confidence: '', method: 'none' };
 }
 
+// ---- stage 2: the volume inside the matched series ----
+// The index is series-level, so a match only says "this ritdon volume belongs
+// to that wenku8 book". titles/wenku8_net_volumes.json holds each series' volume
+// list (scripts/fetch_wenku8_volumes.mjs); resolve the ritdon volume number and
+// subtitle against it. When the volume cannot be named with confidence the
+// series match is kept and the volume columns stay empty.
+const volumesFile = path.resolve(ROOT, opt('--volumes', 'titles/wenku8_net_volumes.json'));
+let volumesById = null;
+if (fs.existsSync(volumesFile)) {
+	try {
+		volumesById = JSON.parse(fs.readFileSync(volumesFile, 'utf8'));
+	} catch (e) {
+		console.warn('warning: could not read ' + path.relative(ROOT, volumesFile) + ': ' + e.message);
+	}
+} else {
+	console.warn('note: ' + path.relative(ROOT, volumesFile) + ' not found - volume columns stay empty (run: make wenku8_volumes)');
+}
+
+// What is left of the ritdon title once the series name is removed, e.g.
+// "才女的侍從_在滿是…大小姐_9" -> "在满是…大小姐". Both sides are normalised, so a
+// subtitle the two sites spell differently still scores through dice().
+function ritdonSubtitle(raw, row) {
+	const base = norm(ritdonVolume(raw).base);
+	for (const f of [row.n, ...row.forms]) {
+		if (f && base.startsWith(f) && base.length > f.length) return base.slice(f.length);
+	}
+	return '';
+}
+
+function resolveVolume(raw, row) {
+	const rec = volumesById?.[row.id];
+	const list = (Array.isArray(rec) ? rec : rec?.volumes) ?? [];
+	if (!list.length) return null;
+	const { num } = ritdonVolume(raw);
+	const sub = ritdonSubtitle(raw, row);
+	let b = null;
+	if (sub) {
+		for (const v of list) {
+			const vs = norm(v.subtitle ?? '');
+			if (!vs) continue;
+			const s = vs === sub ? 1
+				: (vs.length >= 2 && (sub.includes(vs) || vs.includes(sub)) ? 0.9 : dice(sub, vs));
+			if (!b || s > b.s) b = { v, s };
+		}
+		if (b && b.s < 0.6) b = null;
+	}
+	// 1) the printed volume number, which is what ritdon puts at the end of the
+	// title. Never the array position: 短篇集/外传/特典 entries shift it.
+	if (num) {
+		const hits = list.filter(v => v.num === num);
+		if (hits.length === 1) {
+			const v = hits[0];
+			const vs = norm(v.subtitle ?? '');
+			// A number alone is not proof when BOTH sides also name the volume: a
+			// spin-off can reuse a number ("文學少女_愛戀插話集(04)" is not 第四卷
+			// 背负污名的天使). On a conflict, fall through to the subtitle pass.
+			const agree = !sub || !vs || sub.includes(vs) || vs.includes(sub) || dice(sub, vs) >= 0.5;
+			if (agree) return { v, method: 'vol-number', s: 1 };
+		} else if (hits.length > 1) {
+			// Same number twice (a 上/下 split): only the subtitle can separate them.
+			return b ? { v: b.v, method: 'vol-number+subtitle', s: b.s } : null;
+		}
+	}
+	// 2) the two sites number volumes differently; the subtitle is still a key.
+	if (b) return { v: b.v, method: 'vol-subtitle', s: b.s };
+	// 3) a single-volume series needs no volume marker on the ritdon side.
+	if (!num && list.length === 1) return { v: list[0], method: 'vol-single', s: 1 };
+	return null;
+}
+
 // ---- collect ritdon titles ----
 const seen = new Set();
 const titles = [];
@@ -519,10 +593,11 @@ titles.sort((a, b) => a.localeCompare(b, 'zh'));
 const todo = limit ? titles.slice(0, limit) : titles;
 
 // ---- run ----
-const COLUMNS = ['title', 'wenku8_id', 'wenku8_title', 'library', 'url', 'confidence', 'score', 'method'];
+const COLUMNS = ['title', 'wenku8_id', 'wenku8_vol', 'wenku8_title', 'wenku8_vol_title', 'wenku8_vol_url', 'library', 'url', 'confidence', 'score', 'method', 'vol_method'];
 const quote = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const result = [];
 const counts = { exact: 0, 'exact-stripped': 0, 'first-segment': 0, 'space-head': 0, 'cjk-head': 0, 'cjk-tail': 0, 'latin-prefix': 0, 'colon-head': 0, 'series-prefix': 0, high: 0, medium: 0, low: 0, none: 0 };
+const volCounts = { 'vol-number': 0, 'vol-number+subtitle': 0, 'vol-subtitle': 0, 'vol-single': 0, none: 0 };
 const fuzzySamples = [];
 const notFoundSamples = [];
 
@@ -530,15 +605,21 @@ for (const raw of todo) {
 	const m = matchTitle(raw);
 	const r = m.row;
 	counts[m.method === 'none' ? 'none' : (m.method === 'fuzzy' ? m.confidence : m.method)]++;
+	const vol = r ? resolveVolume(raw, r) : null;
+	volCounts[vol?.method ?? 'none']++;
 	result.push({
 		title: raw,
 		wenku8_id: r?.id ?? '',
+		wenku8_vol: vol ? (vol.v.num ?? String(vol.v.seq)) : '',
 		wenku8_title: r?.title ?? '',
+		wenku8_vol_title: vol?.v.label ?? '',
+		wenku8_vol_url: vol?.v.url ?? '',
 		library: r?.library ?? '',
 		url: r?.url ?? '',
 		confidence: m.confidence,
 		score: r ? Number(m.s.toFixed(3)) : '',
 		method: m.method === 'none' ? '' : m.method,
+		vol_method: vol?.method ?? '',
 	});
 	if (m.method === 'fuzzy' && fuzzySamples.length < show) fuzzySamples.push(`${raw}  ->  ${r.title} [${r.id}] (${m.s.toFixed(2)} ${m.confidence})`);
 	if (m.method === 'none' && notFoundSamples.length < show) notFoundSamples.push(raw);
@@ -555,6 +636,10 @@ console.log(`index:   ${rows.length} wenku8 ids`);
 console.log(`matched: ${matched}  (exact ${counts.exact}, exact-stripped ${counts['exact-stripped']}, first-segment ${counts['first-segment']}, space-head ${counts['space-head']}, cjk-head ${counts['cjk-head']}, cjk-tail ${counts['cjk-tail']}, latin-prefix ${counts['latin-prefix']}, colon-head ${counts['colon-head']}, series-prefix ${counts['series-prefix']}, fuzzy ${counts.high + counts.medium + counts.low})`);
 console.log(`  fuzzy confidence: high ${counts.high}, medium ${counts.medium}, low ${counts.low}`);
 console.log(`not found: ${counts.none}`);
+if (volumesById) {
+	const volResolved = result.filter(r => r.wenku8_vol !== '').length;
+	console.log(`volume:  ${volResolved}/${matched} matched series (number ${volCounts['vol-number']}, number+subtitle ${volCounts['vol-number+subtitle']}, subtitle ${volCounts['vol-subtitle']}, single ${volCounts['vol-single']})`);
+}
 console.log(`-> ${path.relative(ROOT, outFile)}`);
 if (fuzzySamples.length) console.log(`\nsample fuzzy matches:\n  ${fuzzySamples.join('\n  ')}`);
 if (notFoundSamples.length) console.log(`\nsample not-found:\n  ${notFoundSamples.join('\n  ')}`);

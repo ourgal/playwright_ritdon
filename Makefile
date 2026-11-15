@@ -64,8 +64,16 @@ wenku8_net:
 wenku8_net_crawl:
 	@node scripts/fetch_wenku8_net_ids.mjs --max-pages $(pages) $(args)
 
+# Crawl each matched series' volume list from its wenku8 book page (same auth
+# as wenku8_net) into titles/wenku8_net_volumes.json.
+.PHONY: wenku8_volumes
+wenku8_volumes:
+	@node scripts/fetch_wenku8_volumes.mjs $(args)
+
 # Match the ritdon titles (titles/*.txt) against the wenku8.net id index and
-# write titles/wenku8_ids.csv. Purely offline, no cookies needed.
+# write titles/wenku8_ids.csv. Purely offline, no cookies needed. When
+# titles/wenku8_net_volumes.json exists the volume inside the matched series is
+# resolved too (wenku8_vol / wenku8_vol_title / wenku8_vol_url / vol_method).
 .PHONY: wenku8_ids
 wenku8_ids:
 	@node scripts/find_wenku8_ids.mjs $(args)
